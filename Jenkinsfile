@@ -1,7 +1,7 @@
 pipeline {
     agent any
     environment {
-        APP_PORT = '5000'
+        APP_PORT = '8080'  // Changed from 5000
         VENV_DIR = '.venv'
         FLASK_HOST = '0.0.0.0'
     }
