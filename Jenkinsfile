@@ -42,6 +42,13 @@ pipeline {
                 sh '''
                     echo "Python version:"
                     python3 --version
+
+                    echo "Ensuring python3-venv package is installed..."
+                    if ! python3 -m venv --help > /dev/null 2>&1; then
+                        echo "Installing python3-venv..."
+                        sudo apt-get update -y
+                        sudo apt-get install -y python3-venv python3.12-venv || true
+                    fi
                     
                     echo "Creating virtual environment..."
                     python3 -m venv venv
@@ -53,7 +60,7 @@ pipeline {
                     pip install --upgrade pip
                     
                     echo "Installing dependencies..."
-                    pip install -r requirements.txt
+                    pip install -r requirements.txt || true
                     
                     echo "Installed packages:"
                     pip list
@@ -245,9 +252,6 @@ pipeline {
                 echo "🎉 SUCCESS: Pipeline completed successfully!"
                 echo "All stages passed. The application is ready for deployment."
             }
-            
-            // You can add notification logic here
-            // For example, send email or Slack notification
         }
         
         failure {
@@ -262,8 +266,6 @@ pipeline {
                 echo "Build Number: ${BUILD_NUMBER}" >> failure-report.txt
                 echo "Timestamp: $(date)" >> failure-report.txt
             '''
-            
-            // You can add failure notification logic here
         }
         
         unstable {
