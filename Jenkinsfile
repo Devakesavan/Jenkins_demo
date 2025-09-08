@@ -14,9 +14,16 @@ pipeline {
                     echo "=== STAGE: Checkout Code ==="
                     echo "Checking out code from repository..."
                 }
-                // For SCM-based pipeline, this step is automatic
-                // But you can specify specific git commands if needed
-                checkout scm
+                
+                // Checkout with credentials
+                checkout([
+                    $class: 'GitSCM',
+                    branches: [[name: '*/main']],
+                    userRemoteConfigs: [[
+                        credentialsId: 'github-credentials',
+                        url: 'https://github.com/YOUR_USERNAME/YOUR_REPO_NAME.git'
+                    ]]
+                ])
                 
                 script {
                     echo "Code checkout completed successfully!"
