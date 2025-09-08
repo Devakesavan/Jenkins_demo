@@ -20,7 +20,6 @@ pipeline {
         stage('Build') {
             steps {
                 sh '''
-                  set -euxo pipefail
                   chmod +x build.sh
                   ./build.sh
                 '''
@@ -30,7 +29,6 @@ pipeline {
         stage('Test') {
             steps {
                 sh '''
-                  set -euxo pipefail
                   chmod +x test.sh
                   ./test.sh
                 '''
@@ -40,8 +38,6 @@ pipeline {
         stage('Deploy') {
             steps {
                 sh '''
-                  set -euxo pipefail
-
                   APP_NAME=${APP_NAME}
                   DEPLOY_DIR=${DEPLOY_DIR}
 
