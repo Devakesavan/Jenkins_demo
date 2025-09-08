@@ -1,198 +1,77 @@
 pipeline {
-    agent {
-        docker {
-            image 'python:3.12-slim'   // Preinstalled Python + venv
-            args '-u root'             // Run as root to allow installs if needed
-        }
-    }
-    
+    agent any
+
     environment {
-        PYTHON_PATH = '/usr/local/bin/python3'
-        FLASK_ENV = 'testing'
-        PORT = '5000'
+        BRANCH = 'main'
+        APP_PORT = '5000'
     }
-    
+
     stages {
-        stage('Checkout Code') {
+        stage('Checkout') {
             steps {
-                script {
-                    echo "=== STAGE: Checkout Code ==="
-                    echo "Checking out code from repository..."
-                }
-                
-                checkout([
-                    $class: 'GitSCM',
-                    branches: [[name: '*/main']],
-                    userRemoteConfigs: [[
-                        credentialsId: 'github-credentials',
-                        url: 'https://github.com/Devakesavan/Jenkins_demo.git'
-                    ]]
-                ])
-                
-                script {
-                    echo "Code checkout completed successfully!"
-                    echo "Current workspace: ${WORKSPACE}"
-                }
+                // If repo is private, configure credentialsId
+                git branch: "${BRANCH}",
+                    url: 'https://github.com/<your-username>/<your-repo>.git',
+                    credentialsId: 'github-credentials'
             }
         }
-        
-        stage('Environment Setup') {
+
+        stage('Install Dependencies') {
             steps {
+                echo "Installing Python and dependencies..."
                 sh '''
-                    echo "=== STAGE: Environment Setup ==="
-                    echo "Python version:"
-                    python3 --version
-                    
-                    echo "Creating virtual environment..."
-                    python3 -m venv venv
-                    
-                    echo "Activating virtual environment..."
-                    . venv/bin/activate
-                    
-                    echo "Upgrading pip..."
-                    pip install --upgrade pip
-                    
-                    echo "Installing dependencies..."
-                    pip install -r requirements.txt
-                    
-                    echo "Installed packages:"
-                    pip list
+                    sudo apt-get update -y
+                    sudo apt-get install -y python3 python3-pip
+
+                    if [ -f requirements.txt ]; then
+                        pip3 install -r requirements.txt
+                    fi
                 '''
             }
         }
-        
-        stage('Code Quality Check') {
+
+        stage('Build') {
             steps {
-                sh '''
-                    . venv/bin/activate
-                    echo "Checking Python syntax..."
-                    python3 -m py_compile app.py
-                    echo "Code quality check passed!"
-                '''
+                echo "Running build script..."
+                sh 'chmod +x build.sh'
+                sh './build.sh'
             }
         }
-        
-        stage('Build Project') {
+
+        stage('Test') {
             steps {
-                sh '''
-                    echo "=== STAGE: Build Project ==="
-                    ./build.sh
-                    echo "Build completed successfully!"
-                '''
+                echo "Running test script..."
+                sh 'chmod +x test.sh'
+                sh './test.sh'
             }
         }
-        
-        stage('Run Tests') {
-            steps {
-                sh '''
-                    echo "=== STAGE: Run Tests ==="
-                    ./test.sh
-                    echo "All tests completed successfully!"
-                '''
+
+        stage('Deploy') {
+            when {
+                branch 'main'
             }
-        }
-        
-        stage('Application Health Check') {
             steps {
+                echo "Deploying Flask app..."
                 sh '''
-                    . venv/bin/activate
-                    echo "Starting Flask application in background..."
-                    nohup python3 app.py > app.log 2>&1 &
-                    APP_PID=$!
-                    echo "Application started with PID: $APP_PID"
-                    
-                    echo "Waiting for application to start..."
-                    sleep 10
-                    
-                    echo "Performing health check..."
-                    curl -f http://localhost:5000/api/health || {
-                        echo "Health check failed!"
-                        kill $APP_PID 2>/dev/null || true
-                        exit 1
-                    }
-                    
-                    echo "Testing API endpoints..."
-                    curl -f http://localhost:5000/api/system > /dev/null
-                    curl -f http://localhost:5000/api/metrics > /dev/null
-                    
-                    echo "Stopping application..."
-                    kill $APP_PID 2>/dev/null || true
-                    
-                    echo "Health check completed successfully!"
-                '''
-            }
-        }
-        
-        stage('Security Scan') {
-            steps {
-                sh '''
-                    . venv/bin/activate
-                    echo "Installing security tools..."
-                    pip install safety bandit
-                    
-                    echo "Checking for known vulnerabilities..."
-                    safety check || echo "Security check completed with warnings"
-                    
-                    echo "Running static security analysis..."
-                    bandit -r . -f json -o bandit-report.json || echo "Bandit scan completed"
-                '''
-            }
-        }
-        
-        stage('Generate Reports') {
-            steps {
-                sh '''
-                    echo "=== BUILD REPORT ===" > build-report.txt
-                    echo "Build Date: $(date)" >> build-report.txt
-                    echo "Build Number: ${BUILD_NUMBER}" >> build-report.txt
-                    echo "Git Commit: $(git rev-parse HEAD)" >> build-report.txt
-                    echo "Git Branch: $(git rev-parse --abbrev-ref HEAD)" >> build-report.txt
-                    echo "" >> build-report.txt
-                    echo "Dependencies:" >> build-report.txt
-                    . venv/bin/activate && pip list >> build-report.txt
-                    
-                    echo "Build report generated successfully!"
+                    # Kill any existing Flask app process
+                    pkill -f app.py || true
+
+                    # Run Flask app in background
+                    nohup python3 app.py > flask.log 2>&1 &
                 '''
             }
         }
     }
-    
+
     post {
         always {
-            echo "=== POST-BUILD ACTIONS ==="
-            echo "Performing cleanup and archiving artifacts..."
-            
-            archiveArtifacts artifacts: '**/*.log, **/*.txt, **/*.json', allowEmptyArchive: true
-            
-            sh '''
-                echo "Cleaning up virtual environment..."
-                rm -rf venv || true
-                echo "Cleanup completed!"
-            '''
-            
-            echo "=== PIPELINE SUMMARY ==="
-            echo "Build Number: ${BUILD_NUMBER}"
-            echo "Build URL: ${BUILD_URL}"
-            echo "Workspace: ${WORKSPACE}"
-            echo "Job Name: ${JOB_NAME}"
-            echo "Pipeline completed!"
+            echo 'Pipeline finished.'
         }
-        
         success {
-            echo "🎉 SUCCESS: Pipeline completed successfully!"
+            echo 'Pipeline succeeded ✅'
         }
-        
         failure {
-            echo "❌ FAILURE: Pipeline failed!"
-            sh '''
-                echo "Pipeline failed at stage: ${STAGE_NAME}" > failure-report.txt
-                echo "Build Number: ${BUILD_NUMBER}" >> failure-report.txt
-                echo "Timestamp: $(date)" >> failure-report.txt
-            '''
-        }
-        
-        unstable {
-            echo "⚠️ UNSTABLE: Pipeline completed with warnings!"
+            echo 'Pipeline failed ❌'
         }
     }
 }
