@@ -17,9 +17,25 @@ pipeline {
             }
         }
 
+        stage('Setup Python Env') {
+            steps {
+                sh '''
+                  set -eux
+                  if ! dpkg -s python3-venv >/dev/null 2>&1; then
+                      echo ">>> Installing python3-venv..."
+                      sudo apt-get update
+                      sudo apt-get install -y python3-venv
+                  else
+                      echo ">>> python3-venv already installed."
+                  fi
+                '''
+            }
+        }
+
         stage('Build') {
             steps {
                 sh '''
+                  set -eux
                   chmod +x build.sh
                   ./build.sh
                 '''
@@ -29,6 +45,7 @@ pipeline {
         stage('Test') {
             steps {
                 sh '''
+                  set -eux
                   chmod +x test.sh
                   ./test.sh
                 '''
@@ -38,6 +55,8 @@ pipeline {
         stage('Deploy') {
             steps {
                 sh '''
+                  set -eux
+
                   APP_NAME=${APP_NAME}
                   DEPLOY_DIR=${DEPLOY_DIR}
 
