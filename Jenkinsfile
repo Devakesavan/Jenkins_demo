@@ -18,11 +18,8 @@ pipeline {
 
         stage('Install Dependencies') {
             steps {
-                echo "Installing Python and dependencies..."
+                echo "Installing Python dependencies..."
                 sh '''
-                    sudo apt-get update -y
-                    sudo apt-get install -y python3 python3-pip
-
                     if [ -f requirements.txt ]; then
                         pip3 install -r requirements.txt
                     fi
