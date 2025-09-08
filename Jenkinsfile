@@ -17,21 +17,6 @@ pipeline {
             }
         }
 
-        stage('Setup Python Env') {
-            steps {
-                sh '''
-                  set -eux
-                  if ! dpkg -s python3-venv >/dev/null 2>&1; then
-                      echo ">>> Installing python3-venv..."
-                      sudo apt-get update
-                      sudo apt-get install -y python3-venv
-                  else
-                      echo ">>> python3-venv already installed."
-                  fi
-                '''
-            }
-        }
-
         stage('Build') {
             steps {
                 sh '''
@@ -65,14 +50,9 @@ pipeline {
                   sudo rsync -a --delete ./ $DEPLOY_DIR/
                   sudo chown -R jenkins:jenkins $DEPLOY_DIR
 
-                  # Setup venv in deploy dir
-                  if [ ! -d "$DEPLOY_DIR/venv" ]; then
-                      python3 -m venv $DEPLOY_DIR/venv
-                  fi
-
-                  . $DEPLOY_DIR/venv/bin/activate
-                  pip install --upgrade pip
-                  pip install -r $DEPLOY_DIR/requirements.txt
+                  # Install dependencies globally (no venv)
+                  pip3 install --upgrade pip
+                  pip3 install -r $DEPLOY_DIR/requirements.txt
 
                   # Create systemd service for gunicorn
                   sudo tee /etc/systemd/system/${APP_NAME}.service > /dev/null <<EOF
@@ -83,8 +63,7 @@ After=network.target
 [Service]
 User=jenkins
 WorkingDirectory=${DEPLOY_DIR}
-Environment="PATH=${DEPLOY_DIR}/venv/bin"
-ExecStart=${DEPLOY_DIR}/venv/bin/gunicorn -b 0.0.0.0:${APP_PORT} app:app
+ExecStart=/usr/bin/gunicorn -b 0.0.0.0:${APP_PORT} app:app
 
 [Install]
 WantedBy=multi-user.target
