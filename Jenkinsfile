@@ -59,12 +59,12 @@ pipeline {
             steps {
                 echo "Deploying Flask app..."
                 sh '''
-                    # Kill any existing Flask app process
-                    pkill -f app.py || true
+                    echo "Killing any existing Flask process..."
+                    pkill -f "python app.py" || true
 
-                    # Run Flask app in background using venv Python
+                    echo "Starting Flask app on 0.0.0.0:${APP_PORT} ..."
                     . ${VENV_DIR}/bin/activate
-                    nohup python app.py > flask.log 2>&1 &
+                    nohup python app.py --host=0.0.0.0 --port=${APP_PORT} > flask.log 2>&1 &
                 '''
             }
         }
