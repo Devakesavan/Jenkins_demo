@@ -1,35 +1,52 @@
 #!/bin/bash
-echo "========================================"
-echo "🚀 Starting Build Process"
-echo "========================================"
 
-echo "Timestamp: $(date)"
-echo "Build Environment: production"
-echo "Python Version: $(python3 --version)"
-echo "Working Directory: $(pwd)"
+# Build script for DevOps CI/CD Demo
+echo "Starting DevOps application build process..."
 
-echo "[BUILD] Step 1: Validating environment and dependencies..."
-if command -v python3 >/dev/null 2>&1; then
-    echo "[BUILD] ✅ Python 3 is available"
+# Create build directory if it doesn't exist
+mkdir -p build
+
+# Copy application files to build directory
+cp index.html build/
+echo "Application files copied to build directory"
+
+# Simulate build process
+echo "Installing dependencies..."
+sleep 2
+echo "Compiling application..."
+sleep 3
+
+# Create build information file
+echo "Creating build information..."
+echo "Build Number: $BUILD_NUMBER" > build/build_info.txt
+echo "Build Date: $(date)" >> build/build_info.txt
+echo "Built by: $JOB_NAME" >> build/build_info.txt
+echo "Build Node: $NODE_NAME" >> build/build_info.txt
+
+# Generate build artifact manifest
+echo "Generating artifact manifest..."
+echo "Files in this build:" > build/artifacts.txt
+ls -la build/ >> build/artifacts.txt
+
+# Simulate a compilation step
+echo "Optimizing assets..."
+sleep 2
+
+# Verify build contents
+echo "Verifying build contents..."
+if [ -f "build/index.html" ]; then
+    echo "HTML file verified successfully"
 else
-    echo "[BUILD] ❌ Python 3 is not installed"
+    echo "ERROR: HTML file missing from build"
     exit 1
 fi
 
-echo "[BUILD] Step 2: Installing dependencies..."
-if [ -f requirements.txt ]; then
-    echo "[BUILD] Installing Python dependencies from requirements.txt..."
-    pip install -r requirements.txt
+if [ -f "build/build_info.txt" ]; then
+    echo "Build info file verified successfully"
 else
-    echo "[BUILD] ⚠️ No requirements.txt found, skipping dependencies"
-fi
-
-echo "[BUILD] Step 3: Validating application files..."
-if [ -f app.py ]; then
-    echo "[BUILD] ✅ app.py found"
-else
-    echo "[BUILD] ❌ app.py not found"
+    echo "ERROR: Build info file missing from build"
     exit 1
 fi
 
-echo "[BUILD] ✅ Build completed successfully"
+echo "Build completed successfully!"
+echo "Build artifacts are available in the build directory"
