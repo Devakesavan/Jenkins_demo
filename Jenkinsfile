@@ -1,19 +1,21 @@
 pipeline {
-    agent any
+    agent {
+        docker {
+            image 'python:3.12-slim'
+            args '-u root'  // run as root inside container
+        }
+    }
 
     environment {
         APP_NAME   = 'flask-demo'
         APP_PORT   = '5000'
         DEPLOY_DIR = '/opt/flask-demo'
-        GIT_URL    = 'https://github.com/Devakesavan/Jenkins_demo.git'
-        GIT_BRANCH = 'main'
-        GIT_CREDS  = 'github-credentials'
     }
 
     stages {
         stage('Checkout') {
             steps {
-                git url: "${GIT_URL}", branch: "${GIT_BRANCH}", credentialsId: "${GIT_CREDS}"
+                git url: "https://github.com/Devakesavan/Jenkins_demo.git", branch: "main", credentialsId: "github-credentials"
             }
         }
 
@@ -21,8 +23,8 @@ pipeline {
             steps {
                 sh '''
                   set -eux
-                  chmod +x build.sh
-                  ./build.sh
+                  pip install --upgrade pip
+                  pip install -r requirements.txt
                 '''
             }
         }
@@ -41,38 +43,8 @@ pipeline {
             steps {
                 sh '''
                   set -eux
-
-                  APP_NAME=${APP_NAME}
-                  DEPLOY_DIR=${DEPLOY_DIR}
-
-                  # Copy project to deploy directory
-                  sudo mkdir -p $DEPLOY_DIR
-                  sudo rsync -a --delete ./ $DEPLOY_DIR/
-                  sudo chown -R jenkins:jenkins $DEPLOY_DIR
-
-                  # Install dependencies globally (no venv)
-                  pip3 install --upgrade pip
-                  pip3 install -r $DEPLOY_DIR/requirements.txt
-
-                  # Create systemd service for gunicorn
-                  sudo tee /etc/systemd/system/${APP_NAME}.service > /dev/null <<EOF
-[Unit]
-Description=${APP_NAME} via Gunicorn
-After=network.target
-
-[Service]
-User=jenkins
-WorkingDirectory=${DEPLOY_DIR}
-ExecStart=/usr/bin/gunicorn -b 0.0.0.0:${APP_PORT} app:app
-
-[Install]
-WantedBy=multi-user.target
-EOF
-
-                  # Restart service
-                  sudo systemctl daemon-reload
-                  sudo systemctl enable ${APP_NAME}
-                  sudo systemctl restart ${APP_NAME}
+                  echo "Starting app with Gunicorn..."
+                  gunicorn -b 0.0.0.0:${APP_PORT} app:app &
                 '''
             }
         }
