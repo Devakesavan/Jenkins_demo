@@ -4,24 +4,27 @@ pipeline {
     environment {
         BRANCH = 'main'
         APP_PORT = '5000'
+        VENV_DIR = '.venv'
     }
 
     stages {
         stage('Checkout') {
             steps {
-                // If repo is private, configure credentialsId
                 git branch: "${BRANCH}",
                     url: 'https://github.com/Devakesavan/Jenkins_demo.git',
                     credentialsId: 'github-credentials'
             }
         }
 
-        stage('Install Dependencies') {
+        stage('Setup VirtualEnv') {
             steps {
-                echo "Installing Python dependencies..."
+                echo "Creating Python virtual environment..."
                 sh '''
+                    python3 -m venv ${VENV_DIR}
+                    . ${VENV_DIR}/bin/activate
+                    pip install --upgrade pip
                     if [ -f requirements.txt ]; then
-                        pip3 install -r requirements.txt
+                        pip install -r requirements.txt
                     fi
                 '''
             }
@@ -30,16 +33,22 @@ pipeline {
         stage('Build') {
             steps {
                 echo "Running build script..."
-                sh 'chmod +x build.sh'
-                sh './build.sh'
+                sh '''
+                    . ${VENV_DIR}/bin/activate
+                    chmod +x build.sh
+                    ./build.sh
+                '''
             }
         }
 
         stage('Test') {
             steps {
                 echo "Running test script..."
-                sh 'chmod +x test.sh'
-                sh './test.sh'
+                sh '''
+                    . ${VENV_DIR}/bin/activate
+                    chmod +x test.sh
+                    ./test.sh
+                '''
             }
         }
 
@@ -53,8 +62,9 @@ pipeline {
                     # Kill any existing Flask app process
                     pkill -f app.py || true
 
-                    # Run Flask app in background
-                    nohup python3 app.py > flask.log 2>&1 &
+                    # Run Flask app in background using venv Python
+                    . ${VENV_DIR}/bin/activate
+                    nohup python app.py > flask.log 2>&1 &
                 '''
             }
         }
