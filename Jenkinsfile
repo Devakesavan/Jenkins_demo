@@ -2,7 +2,6 @@ pipeline {
     agent any
 
     environment {
-        BRANCH = 'main'
         APP_PORT = '5000'
         VENV_DIR = '.venv'
     }
@@ -10,8 +9,8 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                git branch: "${BRANCH}",
-                    url: 'https://github.com/Devakesavan/Jenkins_demo.git',
+                git url: 'https://github.com/Devakesavan/Jenkins_demo.git',
+                    branch: 'main',
                     credentialsId: 'github-credentials'
             }
         }
@@ -53,9 +52,6 @@ pipeline {
         }
 
         stage('Deploy') {
-            when {
-                branch 'main'
-            }
             steps {
                 echo "Deploying Flask app..."
                 sh '''
@@ -64,7 +60,11 @@ pipeline {
 
                     echo "Starting Flask app on 0.0.0.0:${APP_PORT} ..."
                     . ${VENV_DIR}/bin/activate
-                    nohup python app.py --host=0.0.0.0 --port=${APP_PORT} > flask.log 2>&1 &
+                    export PORT=${APP_PORT}
+                    export FLASK_ENV=production
+                    nohup python app.py > flask.log 2>&1 &
+
+                    echo "Flask app started. Check logs with: tail -f flask.log"
                 '''
             }
         }
