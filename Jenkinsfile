@@ -11,7 +11,7 @@ pipeline {
             steps {
                 // If repo is private, configure credentialsId
                 git branch: "${BRANCH}",
-                    url: 'https://github.com/<your-username>/<your-repo>.git',
+                    url: 'https://github.com/Devakesavan/Jenkins_demo.git',
                     credentialsId: 'github-credentials'
             }
         }
