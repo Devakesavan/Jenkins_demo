@@ -1,5 +1,10 @@
 pipeline {
-    agent any   // run directly on EC2 host (not inside Docker)
+    agent {
+        docker {
+            image 'python:3.12-slim'
+            args '-u root'  // run as root inside container
+        }
+    }
 
     environment {
         APP_NAME   = 'flask-demo'
@@ -18,8 +23,6 @@ pipeline {
             steps {
                 sh '''
                   set -eux
-                  python3 -m venv .venv
-                  . .venv/bin/activate
                   pip install --upgrade pip
                   pip install -r requirements.txt
                 '''
@@ -40,24 +43,8 @@ pipeline {
             steps {
                 sh '''
                   set -eux
-                  echo "Deploying app to ${DEPLOY_DIR}..."
-
-                  # Create deploy dir if not exists
-                  sudo mkdir -p ${DEPLOY_DIR}
-                  sudo cp -r * ${DEPLOY_DIR}
-
-                  cd ${DEPLOY_DIR}
-
-                  # Kill any running Gunicorn for this app
-                  if pgrep -f "gunicorn.*${APP_NAME}" > /dev/null; then
-                      echo "Stopping existing app..."
-                      pkill -f "gunicorn.*${APP_NAME}" || true
-                  fi
-
-                  # Start Gunicorn in background
-                  echo "Starting app on port ${APP_PORT}..."
-                  nohup .venv/bin/gunicorn -b 0.0.0.0:${APP_PORT} app:app \
-                    --name ${APP_NAME} > flask.log 2>&1 &
+                  echo "Starting app with Gunicorn..."
+                  gunicorn -b 0.0.0.0:${APP_PORT} app:app &
                 '''
             }
         }
