@@ -1,5 +1,10 @@
 pipeline {
-    agent any  // run on EC2 host directly
+    agent {
+        docker {
+            image 'python:3.12-slim'
+            args '-u root'  // run as root inside container
+        }
+    }
 
     environment {
         APP_NAME   = 'flask-demo'
@@ -10,9 +15,7 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                git url: "https://github.com/Devakesavan/Jenkins_demo.git", 
-                    branch: "main", 
-                    credentialsId: "github-credentials"
+                git url: "https://github.com/Devakesavan/Jenkins_demo.git", branch: "main", credentialsId: "github-credentials"
             }
         }
 
@@ -20,8 +23,8 @@ pipeline {
             steps {
                 sh '''
                   set -eux
-                  pip3 install --upgrade pip
-                  pip3 install -r requirements.txt
+                  pip install --upgrade pip
+                  pip install -r requirements.txt
                 '''
             }
         }
@@ -31,7 +34,7 @@ pipeline {
                 sh '''
                   set -eux
                   chmod +x test.sh
-                  ./test.sh || echo "No tests found, skipping..."
+                  ./test.sh
                 '''
             }
         }
@@ -40,15 +43,8 @@ pipeline {
             steps {
                 sh '''
                   set -eux
-                  echo "Building Docker image for Flask app..."
-                  docker build -t ${APP_NAME} .
-
-                  echo "Stopping any existing container..."
-                  docker stop ${APP_NAME} || true
-                  docker rm ${APP_NAME} || true
-
-                  echo "Starting Flask app container..."
-                  docker run -d --name ${APP_NAME} -p ${APP_PORT}:${APP_PORT} ${APP_NAME}
+                  echo "Starting app with Gunicorn..."
+                  gunicorn -b 0.0.0.0:${APP_PORT} app:app &
                 '''
             }
         }
